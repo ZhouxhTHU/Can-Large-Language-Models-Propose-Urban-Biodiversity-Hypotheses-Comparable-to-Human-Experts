@@ -2,7 +2,6 @@ import os
 import textwrap
 import numpy as np
 import pandas as pd
-import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
 
@@ -32,12 +31,12 @@ DIMENSION_COLORS = {
 plt.rcParams.update({
     "font.family": "Arial",
     "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
-    "font.size": 12,
-    "axes.titlesize": 15,
-    "axes.labelsize": 13,
-    "xtick.labelsize": 11.5,
-    "ytick.labelsize": 11.5,
-    "legend.fontsize": 10.5,
+    "font.size": 18,
+    "axes.titlesize": 20,
+    "axes.labelsize": 18,
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 15,
     "pdf.fonttype": 42,
     "ps.fonttype": 42,
 })
@@ -71,7 +70,7 @@ cross_plot_df = cross_df[["HH_win", "HL_win", "Tie"]].copy()
 x = np.arange(len(cross_plot_df.index))
 width = 0.24
 
-plt.figure(figsize=(7.2, 4.8))
+plt.figure(figsize=(9.6, 4.8))
 
 plt.bar(
     x - width,
@@ -106,7 +105,7 @@ plt.bar(
 plt.xticks(x, cross_plot_df.index)
 plt.xlabel("Dimension")
 plt.ylabel("Number of selections")
-plt.title("human–LLM comparisons")
+plt.title("Selection counts")
 
 plt.legend(
     frameon=False,
@@ -123,7 +122,7 @@ fig1_path = os.path.join(
     "figure1_cross_source_counts.png"
 )
 
-plt.savefig(fig1_path, dpi=300, bbox_inches="tight")
+plt.savefig(fig1_path, dpi=600, bbox_inches="tight")
 plt.close()
 
 
@@ -177,9 +176,14 @@ def plot_boxplot_with_points(
     output_path,
     ref_line=None,
     ylim=(0, 1),
-    show_expert_lines=False
+    show_expert_lines=False,
+    ax=None,
 ):
-    plt.figure(figsize=(7.2, 4.8))
+    standalone = ax is None
+    if standalone:
+        plt.figure(figsize=(7.2, 4.8))
+    else:
+        plt.sca(ax)
 
     positions = np.arange(1, len(dimensions) + 1)
 
@@ -251,14 +255,17 @@ def plot_boxplot_with_points(
     plt.xticks(positions, dimensions)
     plt.xlabel("Dimension")
     plt.ylabel(ylabel)
-    plt.title(title)
+    plt.title(title, fontsize=20 if standalone else 16, pad=12)
 
     if ylim is not None:
         plt.ylim(*ylim)
 
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
-    plt.close()
+    # Identical canvas and axes bounds for panels b and c, regardless of
+    # their different title and y-label lengths. Avoid per-panel cropping.
+    if standalone:
+        plt.subplots_adjust(left=0.21, right=0.97, bottom=0.20, top=0.76)
+        plt.savefig(output_path, dpi=600, bbox_inches=None)
+        plt.close()
 
 
 # ======================================
@@ -274,8 +281,8 @@ fig2_path = os.path.join(
 plot_boxplot_with_points(
     df=expert_dim_df,
     value_col="LLM_Share_Among_Decisive_Dim",
-    ylabel="LLM share among decisive choices",
-    title="Expert-level LLM preference by dimension",
+    ylabel="Proportion of LLM-generated\nhypotheses selected",
+    title="LLM-generated hypothesis selections\nby human experts",
     output_path=fig2_path,
     ref_line=0.5,
     ylim=(0, 1),
@@ -295,8 +302,8 @@ fig3_path = os.path.join(
 plot_boxplot_with_points(
     df=expert_dim_df,
     value_col="Cross_Tie_Rate_Dim",
-    ylabel="Cross-source Tie rate",
-    title="Expert-level Tie rate by dimension",
+    ylabel="Tie rate",
+    title="Tie rates among human experts",
     output_path=fig3_path,
     ref_line=None,
     ylim=(0, 1),
@@ -313,10 +320,9 @@ expert_dim_data_path = os.path.join(
     "expert_dimension_plot_data.xlsx"
 )
 
-expert_dim_df.to_excel(
-    expert_dim_data_path,
-    index=False
-)
+# Label-only reruns must not overwrite the existing processed data workbook.
+if not os.path.exists(expert_dim_data_path):
+    expert_dim_df.to_excel(expert_dim_data_path, index=False)
 
 
 # ======================================
@@ -339,67 +345,60 @@ print(expert_dim_data_path)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIGURE_DIR = os.path.join(BASE_DIR, "figures")
 
-PANEL_FILES = [
-    ("a", "figure1_cross_source_counts.png"),
-    ("b", "figure2_expert_llm_share_by_dimension_boxplot.png"),
-    ("c", "figure3_expert_tie_rate_by_dimension_boxplot.png"),
-]
-
 CAPTION = (
-    "Figure X. Descriptive outcomes of cross-source comparisons. "
-    "a, Numbers of judgments favoring human-proposed hypotheses, "
+    "Figure 1. Human expert selections (n = 30). "
+    "a, Numbers of judgements favouring human-proposed hypotheses, "
     "LLM-generated hypotheses, or a tie in each evaluation dimension. "
     "b, Expert-level shares of LLM selections among decisive cross-source "
-    "judgments. c, Expert-level tie rates in cross-source judgments."
+    "judgements, excluding ties. "
+    "c, Tie rates among human experts in cross-source judgements."
 )
 
 
-def add_panel(ax, image_path, label):
-    image = mpimg.imread(image_path)
-    ax.imshow(image)
-    ax.axis("off")
-    ax.set_title(
-        label,
-        loc="left",
-        fontsize=15,
-        fontweight="bold",
-        pad=3,
-    )
-
-
 def combine_figures():
-    panel_paths = [
-        (label, os.path.join(FIGURE_DIR, filename))
-        for label, filename in PANEL_FILES
-    ]
-
-    missing_files = [
-        image_path
-        for _, image_path in panel_paths
-        if not os.path.exists(image_path)
-    ]
-
-    if missing_files:
-        missing = "\n".join(missing_files)
-        raise FileNotFoundError(f"Missing input figure(s):\n{missing}")
-
-    fig = plt.figure(figsize=(10.5, 8.8))
-    grid = fig.add_gridspec(
-        2,
-        2,
-        height_ratios=[1.0, 1.0],
-        hspace=0.05,
-        wspace=0.03,
-    )
-
-    ax_a = fig.add_subplot(grid[0, :])
-    ax_b = fig.add_subplot(grid[1, 0])
-    ax_c = fig.add_subplot(grid[1, 1])
-
-    axes = [ax_a, ax_b, ax_c]
-
-    for ax, (label, image_path) in zip(axes, panel_paths):
-        add_panel(ax, image_path, label)
+    # Draw directly on the final canvas so panel text is not shrunk as images.
+    with plt.rc_context({
+        "font.size": 14, "axes.titlesize": 16, "axes.labelsize": 16,
+        "xtick.labelsize": 14, "ytick.labelsize": 14, "legend.fontsize": 13,
+    }):
+        fig = plt.figure(figsize=(10.5, 8.8))
+        fig.suptitle("Human expert selections (n = 30)", fontsize=21, y=0.98)
+        grid = fig.add_gridspec(2, 2, height_ratios=[1, 1], left=0.11,
+                               right=0.98, bottom=0.10, top=0.88,
+                               hspace=0.66, wspace=0.43)
+        top_grid = grid[0, :].subgridspec(1, 2, width_ratios=[3.2, 1], wspace=0.04)
+        ax_a = fig.add_subplot(top_grid[0, 0])
+        ax_b = fig.add_subplot(grid[1, 0])
+        ax_c = fig.add_subplot(grid[1, 1])
+        for offset, column, label, colour in [
+            (-width, "HH_win", "Human-proposed\nhypothesis selected", SOURCE_COLORS["Human"]),
+            (0, "HL_win", "LLM-generated\nhypothesis selected", SOURCE_COLORS["LLM"]),
+            (width, "Tie", "Tie", SOURCE_COLORS["Tie"]),
+        ]:
+            ax_a.bar(x + offset, cross_plot_df[column], width=width,
+                     label=label, color=colour, edgecolor="black", linewidth=0.5)
+        ax_a.set_xticks(x, labels=cross_plot_df.index)
+        ax_a.set_xlabel("Dimension")
+        ax_a.set_ylabel("Number of selections")
+        ax_a.set_title("Selection counts", pad=12)
+        ax_a.legend(frameon=False, loc="upper left", bbox_to_anchor=(1.02, 1),
+                    borderaxespad=0, labelspacing=1.0, handlelength=1.5)
+        plot_boxplot_with_points(
+            df=expert_dim_df, value_col="LLM_Share_Among_Decisive_Dim",
+            ylabel="Proportion of LLM-generated\nhypotheses selected",
+            title="LLM-generated hypothesis\nselections by human experts",
+            output_path=None, ref_line=0.5, ylim=(0, 1), ax=ax_b,
+        )
+        plot_boxplot_with_points(
+            df=expert_dim_df, value_col="Cross_Tie_Rate_Dim",
+            ylabel="Tie rate", title="Tie rates among\nhuman experts",
+            output_path=None, ref_line=None, ylim=(0, 1), ax=ax_c,
+        )
+        for label, ax in zip(("a", "b", "c"), (ax_a, ax_b, ax_c)):
+            ax.text(-0.16, 1.19, label, transform=ax.transAxes,
+                    fontsize=20, fontweight="bold", ha="left", va="bottom")
+        assert abs(ax_b.get_position().width - ax_c.get_position().width) < 1e-12
+        assert abs(ax_b.get_position().height - ax_c.get_position().height) < 1e-12
 
     output_png = os.path.join(
         FIGURE_DIR,
@@ -414,8 +413,8 @@ def combine_figures():
         "figureX_descriptive_outcomes_cross_source_comparisons_caption.txt",
     )
 
-    fig.savefig(output_png, dpi=300, bbox_inches="tight")
-    fig.savefig(output_pdf, bbox_inches="tight")
+    fig.savefig(output_png, dpi=600, bbox_inches="tight")
+    fig.savefig(output_pdf, dpi=600, bbox_inches="tight")
     plt.close(fig)
 
     with open(caption_file, "w", encoding="utf-8") as file:

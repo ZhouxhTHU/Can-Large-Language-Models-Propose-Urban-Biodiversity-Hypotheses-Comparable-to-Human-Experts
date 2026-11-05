@@ -18,14 +18,16 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent
 PROJECT = ROOT.parent
-BAYES = PROJECT / 'figure' / 'Bayesian_summary_values.csv'
-AGREEMENT = PROJECT / 'inter_observer_reliability' / 'all_pairs_concise' / '01_reliability_summary.csv'
+BAYES = PROJECT / 'results' / 'BTL_model' / 'Bayesian_summary_values.csv'
+AGREEMENT = PROJECT / 'results' / 'inter_observer_all_pairs' / '01_reliability_summary.csv'
+OUTPUT = PROJECT / 'figures' / 'final'
 DIMENSIONS = ('Novelty', 'Significance', 'Testability')
 COLORS = {'Novelty': '#0072B2', 'Significance': '#E69F00', 'Testability': '#CC79A7'}
 
 
 def main():
-    # Keep temporary font-cache files out of the delivered seven-file folder.
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    # Keep temporary font-cache files out of the figure folder.
     with tempfile.TemporaryDirectory(prefix='figure_font_cache_') as cache:
         os.environ['MPLCONFIGDIR'] = cache
         import matplotlib
@@ -127,23 +129,23 @@ def main():
             fig,ax=plt.subplots(figsize=(4.8,3.1))
             fig.subplots_adjust(left=.24,right=.97,bottom=.22,top=.78)
             draw(ax)
-            fig.savefig(ROOT/(name+'.png'),dpi=600,facecolor='white')
+            fig.savefig(OUTPUT/(name+'.png'),dpi=600,facecolor='white')
             plt.close(fig)
 
         fig,axes=plt.subplots(2,2,figsize=(9.6,6.1))
         fig.subplots_adjust(left=.12,right=.98,bottom=.11,top=.89,wspace=.48,hspace=.70)
         for ax,draw in zip(axes.flat,panels):
             draw(ax)
-        fig.savefig(ROOT/'final_human_llm_expert_evaluation.png',dpi=600,facecolor='white')
-        fig.savefig(ROOT/'final_human_llm_expert_evaluation.pdf',facecolor='white')
+        fig.savefig(OUTPUT/'final_human_llm_expert_evaluation.png',dpi=600,facecolor='white')
+        fig.savefig(OUTPUT/'final_human_llm_expert_evaluation.pdf',facecolor='white')
         plt.close(fig)
         for path,digest in hashes.items():
             assert hashlib.sha256(path.read_bytes()).hexdigest()==digest
         print('Input values unchanged. Panels a-c: 95% HDIs; panel d: 95% bootstrap CIs.')
         for name in names:
-            print(ROOT/(name+'.png'))
-        print(ROOT/'final_human_llm_expert_evaluation.png')
-        print(ROOT/'final_human_llm_expert_evaluation.pdf')
+            print(OUTPUT/(name+'.png'))
+        print(OUTPUT/'final_human_llm_expert_evaluation.png')
+        print(OUTPUT/'final_human_llm_expert_evaluation.pdf')
 
 
 if __name__ == '__main__':

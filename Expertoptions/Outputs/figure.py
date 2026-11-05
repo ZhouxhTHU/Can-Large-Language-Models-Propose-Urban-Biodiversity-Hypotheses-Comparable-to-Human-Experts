@@ -1,6 +1,6 @@
 # Script for plotting open-ended expert feedback without rerunning API.
 # It reads the already coded file: coded_responses_empirical.csv
-# and combines sentiment, pros, and cons into one a/b/c figure.
+# and combines pros and cons into the two-panel Figure 3.
 
 import os
 import ast
@@ -43,7 +43,7 @@ from thefuzz import process, fuzz
 # 1. Configuration
 # ==========================================
 
-OUTPUT_DIR = "./Outputs"
+OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # 优先读取 Outputs 里的 coded_responses_empirical.csv
@@ -53,7 +53,7 @@ CANDIDATE_CODED_FILES = [
     "coded_responses_empirical.csv"
 ]
 
-OUTPUT_STEM = "open_feedback_abc"
+OUTPUT_STEM = "open_feedback_ab"
 
 SENTIMENT_ORDER = ["Positive", "Mixed", "Neutral", "Negative"]
 
@@ -256,7 +256,7 @@ def plot_bar_values_horizontal(ax):
         )
 
 
-def visualize_findings_abc(df: pd.DataFrame, output_dir: str = "./Outputs"):
+def visualize_findings_ab(df: pd.DataFrame, output_dir: str = "./Outputs"):
     os.makedirs(output_dir, exist_ok=True)
 
     sns.set_theme(style="whitegrid")
@@ -279,15 +279,6 @@ def visualize_findings_abc(df: pd.DataFrame, output_dir: str = "./Outputs"):
             "axes.unicode_minus": False,
         }
     )
-
-    # Sentiment counts
-    sentiment_counts = (
-        df["sentiment_category"]
-        .value_counts()
-        .reindex(SENTIMENT_ORDER, fill_value=0)
-        .reset_index()
-    )
-    sentiment_counts.columns = ["sentiment_category", "count"]
 
     # Pros and cons counts
     all_pros = [
@@ -331,14 +322,8 @@ def visualize_findings_abc(df: pd.DataFrame, output_dir: str = "./Outputs"):
 
     counts_for_save = pd.concat(
         [
-            sentiment_counts.assign(panel="a_sentiment").rename(
-                columns={
-                    "sentiment_category": "descriptor",
-                    "count": "frequency"
-                }
-            )[["panel", "descriptor", "frequency"]],
-            pros_df.assign(panel="b_pros")[["panel", "descriptor", "frequency"]],
-            cons_df.assign(panel="c_cons")[["panel", "descriptor", "frequency"]],
+            pros_df.assign(panel="a_pros")[["panel", "descriptor", "frequency"]],
+            cons_df.assign(panel="b_cons")[["panel", "descriptor", "frequency"]],
         ],
         ignore_index=True
     )
@@ -348,63 +333,12 @@ def visualize_findings_abc(df: pd.DataFrame, output_dir: str = "./Outputs"):
         index=False
     )
 
-    # ==========================================
-    # Combined a/b/c figure
-    # Layout:
-    # a: top, spanning two columns
-    # b: bottom-left
-    # c: bottom-right
-    # ==========================================
+    # Figure 3: the former sentiment panel is omitted.
+    # Keep the existing pros/cons aggregation, bar types and colours.
+    fig, (ax_b, ax_c) = plt.subplots(1, 2, figsize=(12.5, 4.8))
+    fig.subplots_adjust(wspace=0.85, top=0.84, bottom=0.15)
 
-    fig = plt.figure(figsize=(12.5, 8.8))
-
-    grid = fig.add_gridspec(
-        nrows=2,
-        ncols=2,
-        height_ratios=[0.85, 1.35],
-        width_ratios=[1, 1],
-        hspace=0.45,
-        wspace=0.55
-    )
-
-    ax_a = fig.add_subplot(grid[0, :])
-    ax_b = fig.add_subplot(grid[1, 0])
-    ax_c = fig.add_subplot(grid[1, 1])
-
-    # Panel a: sentiment distribution
-    sentiment_palette = {
-        "Positive": "#009E73",
-        "Mixed": "#E69F00",
-        "Neutral": "#7F7F7F",
-        "Negative": "#D55E00"
-    }
-
-    sns.barplot(
-        data=sentiment_counts,
-        x="sentiment_category",
-        y="count",
-        order=SENTIMENT_ORDER,
-        palette=sentiment_palette,
-        saturation=1,
-        ax=ax_a
-    )
-
-    ax_a.set_title(
-        "Distribution of Expert Sentiment Toward LLM Hypotheses",
-        loc="left",
-        pad=10
-    )
-    ax_a.set_xlabel("Sentiment Category")
-    ax_a.set_ylabel("Number of Experts")
-    ax_a.set_ylim(
-        0,
-        max(sentiment_counts["count"].max() + 1, 1)
-    )
-
-    #plot_bar_values_vertical(ax_a)
-    add_panel_label(ax_a, "a", x=-0.04, y=1.13)
-
-    # Panel b: pros
+    # Panel a: pros
     if not pros_df.empty:
         sns.barplot(
             data=pros_df,
@@ -428,9 +362,9 @@ def visualize_findings_abc(df: pd.DataFrame, output_dir: str = "./Outputs"):
     )
 
     #plot_bar_values_horizontal(ax_b)
-    add_panel_label(ax_b, "b", x=-0.08, y=1.08)
+    add_panel_label(ax_b, "a", x=-0.08, y=1.08)
 
-    # Panel c: cons
+    # Panel b: cons
     if not cons_df.empty:
         sns.barplot(
             data=cons_df,
@@ -454,10 +388,10 @@ def visualize_findings_abc(df: pd.DataFrame, output_dir: str = "./Outputs"):
     )
 
     #plot_bar_values_horizontal(ax_c)
-    add_panel_label(ax_c, "c", x=-0.08, y=1.08)
+    add_panel_label(ax_c, "b", x=-0.08, y=1.08)
 
     # Make grid less visually heavy
-    for ax in [ax_a, ax_b, ax_c]:
+    for ax in [ax_b, ax_c]:
         ax.grid(axis="y", color="0.90", linewidth=0.7)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
@@ -481,7 +415,7 @@ def visualize_findings_abc(df: pd.DataFrame, output_dir: str = "./Outputs"):
 
     fig.savefig(
         png_path,
-        dpi=300,
+        dpi=600,
         bbox_inches="tight"
     )
 
@@ -514,7 +448,7 @@ if __name__ == "__main__":
 
     print(f"Loaded {len(analyzed_df)} coded responses.")
 
-    visualize_findings_abc(
+    visualize_findings_ab(
         df=analyzed_df,
         output_dir=OUTPUT_DIR
     )

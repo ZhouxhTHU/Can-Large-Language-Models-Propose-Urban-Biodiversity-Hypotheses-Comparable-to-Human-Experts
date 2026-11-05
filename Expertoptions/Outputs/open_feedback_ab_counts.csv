@@ -1,0 +1,21 @@
+panel,descriptor,frequency
+a_pros,Highly Novel,3
+a_pros,Well-Structured,2
+a_pros,Mechanism-Rich,1
+a_pros,Supports Early Ideation,1
+a_pros,Valid,1
+a_pros,Theoretically Aligned,1
+a_pros,Simplicity,1
+a_pros,Complex Hypotheses,1
+a_pros,Recombines Ideas,1
+a_pros,Identifies Connections,1
+b_cons,Overly Complex,3
+b_cons,Hard To Evaluate,2
+b_cons,Vague Formulation,2
+b_cons,Excessive Length,2
+b_cons,Difficult To Test,2
+b_cons,Low Plausibility,2
+b_cons,Nonsensical Jargon,1
+b_cons,Limited Empirical Operability,1
+b_cons,Requires Refinement,1
+b_cons,Convoluted Structure,1
