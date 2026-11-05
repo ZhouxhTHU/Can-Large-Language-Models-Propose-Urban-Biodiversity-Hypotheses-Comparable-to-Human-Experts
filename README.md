@@ -1,1 +1,1 @@
-# LLMs generated human-comparable urban biodiversity hypotheses but diverged on testability
+# Can Large Language Models Propose Urban Biodiversity Hypotheses Comparable to Human Experts?
